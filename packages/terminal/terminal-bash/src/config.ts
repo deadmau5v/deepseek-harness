@@ -95,7 +95,7 @@ export const Config: z<Config> = z.object({
   exactProbeAfterMs: z.number().default(150),
   idleSilenceMs: z.number().default(3_000),
   handoffGraceMs: z.number().default(500),
-  timeoutMs: z.number().default(30_000),
+  timeoutMs: z.number().default(300_000),
   disposeGraceMs: z.number().default(3_000),
 })
 

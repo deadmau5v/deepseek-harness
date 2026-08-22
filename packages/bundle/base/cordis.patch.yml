@@ -221,7 +221,7 @@
       name: '@deepseek-ai/dsh-bash-sandbox'
       disabled: !!js process.platform === 'win32'
       config:
-        timeoutMs: 60000
+        timeoutMs: 600000
 
     - id: pwsh-sandbox
       name: '@deepseek-ai/dsh-pwsh-sandbox'

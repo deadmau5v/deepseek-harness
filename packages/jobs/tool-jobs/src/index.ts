@@ -29,9 +29,9 @@ export type CompletionDelivery = 'quiet' | 'wakeup'
 
 /** Configures bounded `job_output` waits and completion-notice delivery. */
 export interface Config {
-  /** Wait duration applied when `job_output` sets `wait` without `timeout_ms` (default 30s). */
+  /** Wait duration applied when `job_output` sets `wait` without `timeout_ms` (default 300s). */
   waitTimeoutMs?: number
-  /** Hard cap on any single wait; a larger model-supplied `timeout_ms` is clamped down to it (default 10min). */
+  /** Hard cap on any single wait; a larger model-supplied `timeout_ms` is clamped down to it (default 100min). */
   maxWaitTimeoutMs?: number
   /** Whether a completion opens a turn on an idle owner (default `wakeup`). */
   completionDelivery?: CompletionDelivery
@@ -45,8 +45,8 @@ export interface Config {
 }
 
 export const Config: z<Config> = z.object({
-  waitTimeoutMs: z.number().min(1).default(30_000),
-  maxWaitTimeoutMs: z.number().min(1).default(600_000),
+  waitTimeoutMs: z.number().min(1).default(300_000),
+  maxWaitTimeoutMs: z.number().min(1).default(6_000_000),
   completionDelivery: z.union(['quiet', 'wakeup'] as const).default('wakeup'),
   maxConsecutiveWakes: z.number().min(1).default(3),
 })
@@ -202,8 +202,8 @@ function presentTaskCall(title: string, kind: 'read' | 'execute', rawInput?: str
 }
 
 export function apply(ctx: Context, config: Config): void {
-  const waitDefault = config.waitTimeoutMs ?? 30_000
-  const waitCap = config.maxWaitTimeoutMs ?? 600_000
+  const waitDefault = config.waitTimeoutMs ?? 300_000
+  const waitCap = config.maxWaitTimeoutMs ?? 6_000_000
   const delivery = config.completionDelivery ?? 'wakeup'
   const wakeBudget = config.maxConsecutiveWakes ?? 3
 

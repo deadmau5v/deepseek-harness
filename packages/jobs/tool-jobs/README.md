@@ -51,8 +51,8 @@ Loading the plugin with no config is the common path; a `waitTimeoutMs` above `m
 
 | Field | Default | Meaning |
 |---|---|---|
-| `waitTimeoutMs` | `30,000` | Wait used when `wait: true` omits `timeout_ms` |
-| `maxWaitTimeoutMs` | `600,000` | Cap for model-supplied waits; larger values clamp down to it |
+| `waitTimeoutMs` | `300,000` | Wait used when `wait: true` omits `timeout_ms` |
+| `maxWaitTimeoutMs` | `6,000,000` | Cap for model-supplied waits; larger values clamp down to it |
 | `completionDelivery` | `wakeup` | `wakeup` opens a turn on an idle owner; `quiet` leaves the notice pending |
 | `maxConsecutiveWakes` | `3` | Turns one owner may open by wake before notices degrade to injection |
 

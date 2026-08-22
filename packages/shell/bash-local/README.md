@@ -42,8 +42,8 @@ Load the executor with the budgets you want; every field has a default, so the s
 | Field | Default | Meaning |
 |---|---|---|
 | `cwd` | `process.cwd()` | Default working directory for commands |
-| `timeoutMs` | `120,000` | Default foreground timeout, in milliseconds |
-| `maxTimeoutMs` | `600,000` | Cap for per-call timeout overrides |
+| `timeoutMs` | `1,200,000` | Default foreground timeout, in milliseconds |
+| `maxTimeoutMs` | `6,000,000` | Cap for per-call timeout overrides |
 | `maxOutputBytes` | `64,000` | Per-stream in-memory output cap; overflow spills to a temp file |
 | `maxSpillBytes` | `67,108,864` | Per-stream full-output spill cap |
 | `graceMs` | `3,000` | Grace period for kill escalation and post-exit pipe draining |

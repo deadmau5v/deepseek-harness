@@ -130,8 +130,8 @@ export class PwshLocalExecutor extends ShellExecutor {
 
   static Config: z<Config> = z.object({
     cwd: z.string(),
-    timeoutMs: z.number().default(120_000),
-    maxTimeoutMs: z.number().default(600_000),
+    timeoutMs: z.number().default(1_200_000),
+    maxTimeoutMs: z.number().default(6_000_000),
     maxOutputBytes: z.number().default(64_000),
     maxSpillBytes: z.number().default(DEFAULT_MAX_SPILL_BYTES),
     graceMs: z.number().default(DEFAULT_GRACE_MS),

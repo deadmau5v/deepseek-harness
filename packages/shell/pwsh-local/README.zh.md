@@ -46,8 +46,8 @@ kind: "package-reference"
 | 字段 | 默认值 | 含义 |
 |---|---|---|
 | `cwd` | `process.cwd()` | 命令的默认工作目录 |
-| `timeoutMs` | `120,000` | 默认前台超时，单位为毫秒 |
-| `maxTimeoutMs` | `600,000` | 每次调用超时覆盖值的上限 |
+| `timeoutMs` | `1,200,000` | 默认前台超时，单位为毫秒 |
+| `maxTimeoutMs` | `6,000,000` | 每次调用超时覆盖值的上限 |
 | `maxOutputBytes` | `64,000` | 每流内存输出上限；溢出后 spill 到临时文件 |
 | `maxSpillBytes` | `67,108,864` | 每流完整输出的 spill 上限 |
 | `graceMs` | `3,000` | 终止升级与退出后管道排空的宽限时间 |

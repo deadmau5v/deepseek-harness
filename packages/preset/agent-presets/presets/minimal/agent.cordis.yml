@@ -31,13 +31,13 @@
       name: '@deepseek-ai/dsh-terminal-bash'
       disabled: !!js process.platform === 'win32'
       config:
-        timeoutMs: 300000
+        timeoutMs: 3000000
 
     - id: persistent-bash
       name: '@deepseek-ai/dsh-tool-bash-persistent'
       disabled: !!js process.platform === 'win32'
       config:
-        timeoutMs: 300000
+        timeoutMs: 3000000
         description: |-
           Run commands in a bash shell
           * When invoking this tool, the contents of the "command" parameter does NOT need to be XML-escaped.
@@ -53,13 +53,13 @@
       disabled: !!js process.platform !== 'win32'
       config:
         shellDialect: pwsh
-        timeoutMs: 300000
+        timeoutMs: 3000000
 
     - id: persistent-pwsh
       name: '@deepseek-ai/dsh-tool-pwsh-persistent'
       disabled: !!js process.platform !== 'win32'
       config:
-        timeoutMs: 300000
+        timeoutMs: 3000000
         description: |-
           Run commands in a PowerShell shell
           * When invoking this tool, the contents of the "command" parameter does NOT need to be XML-escaped.

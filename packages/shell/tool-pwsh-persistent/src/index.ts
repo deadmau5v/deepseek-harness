@@ -483,7 +483,7 @@ export interface Config {
 /** Runtime configuration schema for the persistent pwsh tool. */
 export const Config: z<Config> = z.object({
   backendType: z.string().default('shell'),
-  timeoutMs: z.number().default(300_000),
+  timeoutMs: z.number().default(3_000_000),
   maxOutputChars: z.number().default(16_000),
   description: z.string().default(DEFAULT_DESCRIPTION),
 })
@@ -492,7 +492,7 @@ export const Config: z<Config> = z.object({
 export function apply(ctx: Context, config: Config): void {
   const resolved: ResolvedConfig = {
     backendType: config.backendType ?? 'shell',
-    timeoutMs: config.timeoutMs ?? 300_000,
+    timeoutMs: config.timeoutMs ?? 3_000_000,
     maxOutputChars: config.maxOutputChars ?? 16_000,
     description: config.description ?? DEFAULT_DESCRIPTION,
   }
