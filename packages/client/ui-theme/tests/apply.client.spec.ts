@@ -181,9 +181,7 @@ describe('ui-theme apply', () => {
     await remote.ctx.plugin({ inject: [...inject], apply }).await()
     const remoteTheme = remote.ctx.get('theme') as ThemeRuntime
     remoteTheme.setTheme('dark')
-    await Promise.resolve()
-    expect(remote.describe).not.toHaveBeenCalled()
-    expect(remote.mutate).not.toHaveBeenCalled()
+    await vi.waitFor(() => { expect(remote.mutate).toHaveBeenCalledTimes(1) })
   })
 
   it('activates before a slow settings refresh and converges when it settles', async () => {

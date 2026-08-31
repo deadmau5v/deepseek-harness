@@ -42,6 +42,12 @@ describe('resolveDirectoryPickerBackend', () => {
     expect(resolveDirectoryPickerBackend({ ...attended, platform: 'openbsd', env: { WAYLAND_DISPLAY: 'wayland-1' } })).toBe('browse')
   })
 
+  it('forces browse when DSH_DIRECTORY_PICKER is browse or DSH_HEADLESS is true', () => {
+    expect(resolveDirectoryPickerBackend({ ...attended, env: { DSH_DIRECTORY_PICKER: 'browse' } })).toBe('browse')
+    expect(resolveDirectoryPickerBackend({ ...attended, env: { DSH_HEADLESS: 'true' } })).toBe('browse')
+    expect(resolveDirectoryPickerBackend({ ...attended, env: { DSH_DIRECTORY_PICKER: 'native', DSH_HEADLESS: 'false' } })).toBe('native')
+  })
+
   it('treats blank env exports as unset', () => {
     expect(resolveDirectoryPickerBackend({ ...attended, env: { SSH_CONNECTION: '', SSH_TTY: '' } })).toBe('native')
     expect(resolveDirectoryPickerBackend({

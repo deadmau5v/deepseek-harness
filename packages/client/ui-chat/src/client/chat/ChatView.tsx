@@ -5,7 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type {
   ConversationTimelineSnapshot, RenderMessageImages,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { Button, IconChevronDownOutline14, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, IconChevronDownOutline14, Modal, Toast } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatViewSlotProps } from '../contract/slots.ts'
 import type { ChatSnapshot, TurnNavigationItem } from '../contract/snapshot.ts'
 import { PendingSteeringBubble, PendingSubmissionBubble } from './MessageItem.tsx'
@@ -227,6 +227,13 @@ export function ChatView({
   }, [openView])
   const [fileOpenError, setFileOpenError] = useState<{ path: string; message: string } | null>(null)
   const [fileOpenBusy, setFileOpenBusy] = useState(false)
+  const [toast, setToast] = useState<{ seq: number; text: string } | null>(null)
+  const toastSeq = useRef(0)
+  const showToast = useCallback((text: string) => {
+    toastSeq.current += 1
+    setToast({ seq: toastSeq.current, text })
+  }, [])
+  const dismissToast = useCallback(() => { setToast(null) }, [])
   // Close/retry must ignore a settlement that started before the latest
   // gesture; otherwise a cancelled in-flight refusal reopens the dialog.
   const fileOpenRequest = useRef(0)
@@ -234,25 +241,39 @@ export function ChatView({
   const requestOpenFile = useCallback((path: string) => {
     const id = ++fileOpenRequest.current
     setFileOpenBusy(true)
-    void openFile(path).then(
-      () => {
-        if (id !== fileOpenRequest.current) return
-        setFileOpenError(null)
-        setFileOpenBusy(false)
-      },
-      (error: unknown) => {
-        if (id !== fileOpenRequest.current) return
-        setFileOpenError({
-          path,
-          message: openFailureMessage(
-            error,
-            t(isFolderOpenPath(path) ? 'fileOpen.folderUnknown' : 'fileOpen.unknown'),
-          ),
-        })
-        setFileOpenBusy(false)
-      },
-    )
-  }, [openFile, t])
+    try {
+      void openFile(path).then(
+        () => {
+          if (id !== fileOpenRequest.current) return
+          setFileOpenError(null)
+          setFileOpenBusy(false)
+          showToast(t('fileOpen.copied'))
+        },
+        (error: unknown) => {
+          if (id !== fileOpenRequest.current) return
+          setFileOpenError({
+            path,
+            message: openFailureMessage(
+              error,
+              t(isFolderOpenPath(path) ? 'fileOpen.folderUnknown' : 'fileOpen.unknown'),
+            ),
+          })
+          setFileOpenBusy(false)
+        },
+      )
+    } catch (error: unknown) {
+      /* v8 ignore next -- sync throw fallback: openFile returns a rejecting Promise in production */
+      if (id !== fileOpenRequest.current) return
+      setFileOpenError({
+        path,
+        message: openFailureMessage(
+          error,
+          t(isFolderOpenPath(path) ? 'fileOpen.folderUnknown' : 'fileOpen.unknown'),
+        ),
+      })
+      setFileOpenBusy(false)
+    }
+  }, [openFile, showToast, t])
 
   const closeFileOpenError = useCallback(() => {
     fileOpenRequest.current += 1
@@ -660,6 +681,13 @@ export function ChatView({
           onClose={closeFileOpenError}
           onRetry={() => { requestOpenFile(fileOpenError.path) }}
           t={t}
+        />
+      )}
+      {toast !== null && (
+        <Toast
+          key={toast.seq}
+          text={toast.text}
+          onDone={dismissToast}
         />
       )}
     </div>

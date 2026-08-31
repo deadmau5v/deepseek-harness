@@ -1900,6 +1900,28 @@ describe('ChatView', () => {
     expect(h.openView).toHaveBeenCalledWith('trajectory', 'a')
   })
 
+  it('shows a toast feedback when openFile succeeds', async () => {
+    const h = makeHarness({ nodes: [toolResult(3, 'a')] })
+    render(<h.ChatView {...h.props} />)
+    await act(async () => { h.toolOwners[0]!.openFile('src/a.ts') })
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeTruthy()
+    })
+    expect(screen.getByRole('alert').textContent).toContain('已复制文件路径')
+  })
+
+  it('handles synchronous throw in openFile gracefully', async () => {
+    const openFile = vi.fn().mockImplementation(() => { throw new Error('sync failure') })
+    const h = makeHarness({ nodes: [toolResult(3, 'a')] })
+    h.props.openFile = openFile
+    render(<h.ChatView {...h.props} />)
+    await act(async () => { h.toolOwners[0]!.openFile('src/a.ts') })
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: '无法打开文件' })).toBeTruthy()
+    })
+    expect(screen.getByRole('dialog', { name: '无法打开文件' }).textContent).toContain('sync failure')
+  })
+
   it('shows a Host open refusal with the reason and retries the same path', async () => {
     const openFile = vi.fn<(path: string) => Promise<void>>()
       .mockRejectedValueOnce(new Error('xdg-open is not available'))

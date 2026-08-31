@@ -5,6 +5,7 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type { SessionBinding } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { BoundActions, ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import { resolveWorkspacePath } from '@deepseek-ai/dsh-util-workspace-path'
 // Type-only service and declaration merges used by the apply world.
 import type {} from '@deepseek-ai/dsh-client-locale/client'
@@ -119,10 +120,9 @@ export function apply(ctx: Context): void {
           fileMentions: (owner: TurnTailOwnerProps) => ctx.get('chatFileMentions')?.forClosing(owner),
           openFile: async (path) => {
             const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
-            const result = await ctx.remote.session.openWorkspacePath({
-              path: resolveWorkspacePath(cwd, path),
-            })
-            if (!result.ok) throw new Error(`path open failed: ${result.error.message}`)
+            const resolved = resolveWorkspacePath(cwd, path)
+            const ok = await writeClipboard(resolved)
+            if (!ok) throw new Error('Failed to copy to clipboard')
           },
           loadOlder: () => { void session.loadOlder() },
           loadImage: Object.assign(

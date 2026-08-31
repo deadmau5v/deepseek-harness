@@ -5,7 +5,7 @@ import { AttachmentId } from '@deepseek-ai/dsh-attachment'
 import type { ISession } from '@deepseek-ai/dsh-api-session-controller/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import {
-  RemoteError, SlotTestRuntime, TestRemote, stubSettingsScope, usePinnedBrowserLanguages,
+  SlotTestRuntime, TestRemote, stubSettingsScope, usePinnedBrowserLanguages,
 } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SessionBehaviorOverrides } from '@deepseek-ai/dsh-client-test-runtime'
 import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
@@ -119,17 +119,19 @@ describe('Chat inject API', () => {
     await b.runtime.dispose()
   })
 
-  it('resolves file paths against the Session cwd and preserves failures', async () => {
+  it('resolves file paths against the Session cwd and copies to clipboard', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    })
     const b = await bench()
     const { injected } = b.chatViewApi(ROOT)
     await injected.openFile('src/a.ts')
-    expect(b.openWorkspacePath).toHaveBeenCalledWith({ path: '/proj/src/a.ts' })
+    expect(writeText).toHaveBeenCalledWith('/proj/src/a.ts')
 
-    b.openWorkspacePath.mockResolvedValueOnce({
-      ok: false,
-      error: new RemoteError('gateway/internal', 'xdg-open is not available', {}),
-    })
-    await expect(injected.openFile('src/b.ts')).rejects.toThrow('path open failed: xdg-open is not available')
+    writeText.mockRejectedValueOnce(new Error('clipboard failure'))
+    await expect(injected.openFile('src/b.ts')).rejects.toThrow('Failed to copy to clipboard')
     await b.runtime.dispose()
   })
 
