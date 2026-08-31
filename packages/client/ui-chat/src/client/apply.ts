@@ -121,8 +121,11 @@ export function apply(ctx: Context): void {
           openFile: async (path) => {
             const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
             const resolved = resolveWorkspacePath(cwd, path)
-            const ok = await writeClipboard(resolved)
-            if (!ok) throw new Error('Failed to copy to clipboard')
+            void writeClipboard(resolved)
+            const result = await ctx.remote.session.openWorkspacePath({
+              path: resolved,
+            })
+            if (!result.ok) throw new Error(`path open failed: ${result.error.message}`)
           },
           loadOlder: () => { void session.loadOlder() },
           loadImage: Object.assign(

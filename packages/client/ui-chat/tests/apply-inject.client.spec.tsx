@@ -129,9 +129,13 @@ describe('Chat inject API', () => {
     const { injected } = b.chatViewApi(ROOT)
     await injected.openFile('src/a.ts')
     expect(writeText).toHaveBeenCalledWith('/proj/src/a.ts')
+    expect(b.openWorkspacePath).toHaveBeenCalledWith({ path: '/proj/src/a.ts' })
 
-    writeText.mockRejectedValueOnce(new Error('clipboard failure'))
-    await expect(injected.openFile('src/b.ts')).rejects.toThrow('Failed to copy to clipboard')
+    b.openWorkspacePath.mockResolvedValueOnce({
+      ok: false,
+      error: { message: 'xdg-open is not available' },
+    })
+    await expect(injected.openFile('src/b.ts')).rejects.toThrow('path open failed: xdg-open is not available')
     await b.runtime.dispose()
   })
 
