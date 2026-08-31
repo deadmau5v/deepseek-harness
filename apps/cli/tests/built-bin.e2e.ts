@@ -356,14 +356,16 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       expect(web.stdout).toContain('--port <port>')
       expect(web.stdout).not.toContain('dsh web: http://')
 
-      const wildcardHost = await runBuiltBin(['web', '--host', '0.0.0.0'], {
+      // This fork intentionally allows a non-loopback (0.0.0.0) bind; the
+      // guarded usage error is reserved for a genuinely invalid port.
+      const badPort = await runBuiltBin(['web', '--port', 'not-a-number'], {
         DSH_HOME: home,
         DSH_TELEMETRY_DISABLED: '1',
       })
-      expect(wildcardHost.code).toBe(1)
-      expect(wildcardHost.stdout).toBe('')
-      expect(wildcardHost.stderr).toContain('--host 0.0.0.0 is intentionally not supported yet for safety: it would expose remote code execution to the network; use 127.0.0.1 instead')
-      expect(wildcardHost.stderr).not.toContain('dsh web: http://')
+      expect(badPort.code).toBe(1)
+      expect(badPort.stdout).toBe('')
+      expect(badPort.stderr).toContain('--port must be a number')
+      expect(badPort.stderr).not.toContain('dsh web: http://')
 
       const headlessHelp = await runBuiltBin(['--profile', 'headless', '--help'], {
         DSH_HOME: home,
@@ -399,6 +401,36 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       rmSync(home, { recursive: true, force: true })
     }
   }, SPAWN_TIMEOUT_MS * 3 + 30_000)
+
+  it('allows --host 0.0.0.0 with a warning (fork behavior)', async () => {
+    const home = mkdtempSync(join(tmpdir(), 'dsh-app-host-'))
+    const childEnv = Object.fromEntries(
+      Object.entries({ ...process.env, DSH_HOME: home, DSH_TELEMETRY_DISABLED: '1' })
+        .filter((entry): entry is [string, string] => entry[1] !== undefined),
+    )
+    // The wildcard bind now boots and stays resident instead of hard-failing;
+    // assert the warning surfaces while the server stays up, then terminate it.
+    const child = execa(process.execPath, [dshBin, 'web', '--host', '0.0.0.0', '--port', '0', '--no-open'], {
+      env: childEnv,
+      extendEnv: false,
+      reject: false,
+    })
+    try {
+      const sawWarning = await new Promise<boolean>((resolve) => {
+        const deadline = setTimeout(() => resolve(false), 20_000)
+        child.stderr?.on('data', (chunk) => {
+          if (String(chunk).includes('--host 0.0.0.0 exposes remote code execution')) {
+            clearTimeout(deadline)
+            resolve(true)
+          }
+        })
+      })
+      expect(sawWarning).toBe(true)
+    } finally {
+      child.kill('SIGKILL')
+      rmSync(home, { recursive: true, force: true })
+    }
+  }, 30_000)
 
   it('reports SDK startup failure when stdin reaches EOF first', async () => {
     const home = mkdtempSync(join(tmpdir(), 'dsh-built-sdk-startup-failure-'))
