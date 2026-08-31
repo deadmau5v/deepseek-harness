@@ -2,6 +2,20 @@
 
 English | [中文](README.zh.md)
 
+> **This fork** — `deadmau5v/deepseek-harness` — tracks the upstream
+> [`deepseek-ai/deepseek-harness`](https://github.com/deepseek-ai/deepseek-harness)
+> `master` and keeps a set of divergent commits on top of it. These are kept
+> **private to this fork** (no upstream pull requests) and are not part of the
+> official project. The current additions are:
+>
+> - **Remote headless access** — serve the Web UI on a non-loopback bind over
+>   plain HTTP, with non-loopback trusted hosts able to read and persist
+>   settings, an in-browser directory picker and clipboard file copy
+>   (`feat(web)`, `fix(settings)`).
+> - **Relaxed shell/job timeouts** (`feat(shell, jobs)`).
+>
+> See the `feat/remote-headless-access` branch for the individual work.
+
 DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
 
 It is built on an **everything-is-a-plugin** architecture and powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://arxiv.org/abs/2608.25512).

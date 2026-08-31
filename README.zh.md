@@ -2,6 +2,17 @@
 
 [English](README.md) | 中文
 
+> **本 Fork** — `deadmau5v/deepseek-harness` — 跟踪上游
+> [`deepseek-ai/deepseek-harness`](https://github.com/deepseek-ai/deepseek-harness)
+> 的 `master`，并在此之上保留一组独立提交。这些改动**仅保留在本仓库**（不向上游提 PR），
+> 不属于官方项目。当前新增内容包括：
+>
+> - **远程无头访问** —— 支持在非回环地址、明文 HTTP 上运行 Web UI，非回环可信主机可读写设置，
+>   以及浏览器内目录选择器和剪贴板文件拷贝（`feat(web)`、`fix(settings)`）。
+> - **放宽 shell/job 超时**（`feat(shell, jobs)`）。
+>
+> 具体改动见 `feat/remote-headless-access` 分支。
+
 DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness（智能体框架）。
 
 它构建于**一切皆插件**的架构之上，由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://arxiv.org/abs/2608.25512)。
