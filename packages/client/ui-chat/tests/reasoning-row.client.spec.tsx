@@ -120,4 +120,47 @@ describe('ReasoningRow', () => {
     expect(view.container.querySelector('[class*="ioCard"]')).toBeNull()
     expect(view.container.querySelector('[class*="thinkBody"]')).not.toBeNull()
   })
+
+  it('does not render separator when running with empty reasoning text', () => {
+    const view = render(
+      <AssistantMarkdown
+        t={t}
+        blocks={[{ kind: 'reasoning', text: '' }]}
+        streaming
+        renderMessageImages={renderMessageImages}
+      />,
+    )
+    expect(view.getByText('思考')).toBeTruthy()
+    expect(view.container.querySelector('[class*="separator"]')).toBeNull()
+  })
+
+  it('skips empty reasoning blocks when settled or appearing after text', () => {
+    const view = render(
+      <AssistantMarkdown
+        t={t}
+        blocks={[
+          { kind: 'text', text: 'Answer text' },
+          { kind: 'reasoning', text: '' },
+        ]}
+        streaming={false}
+        renderMessageImages={renderMessageImages}
+      />,
+    )
+    expect(view.getByText('Answer text')).toBeTruthy()
+    expect(view.queryByText('思考')).toBeNull()
+
+    view.rerender(
+      <AssistantMarkdown
+        t={t}
+        blocks={[
+          { kind: 'text', text: 'Answer text' },
+          { kind: 'reasoning', text: '' },
+        ]}
+        streaming
+        renderMessageImages={renderMessageImages}
+      />,
+    )
+    expect(view.getByText('Answer text')).toBeTruthy()
+    expect(view.queryByText('思考')).toBeNull()
+  })
 })

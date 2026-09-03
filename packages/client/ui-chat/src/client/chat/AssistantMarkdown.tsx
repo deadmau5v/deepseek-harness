@@ -40,7 +40,7 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({
   // between tool groups — skip the shell unless something visible remains.
   const hasVisible = streaming
     || interrupted === true
-    || blocks.some(block => block.kind !== 'tool-call')
+    || blocks.some(block => block.kind !== 'tool-call' && (block.kind !== 'reasoning' || block.text.trim() !== ''))
   if (!hasVisible) return null
   const rendered: ReactNode[] = []
   for (let i = 0; i < blocks.length; i++) {
@@ -58,17 +58,20 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({
           />,
         )
         break
-      case 'reasoning':
+      case 'reasoning': {
+        const running = streaming && i === last && !blocks.slice(0, i).some(b => b?.kind === 'text')
+        if (!running && block.text.trim() === '') break
         rendered.push(
           <ProcessReasoning
             key={i}
             hidden={reasoningHidden}
             reveal={revealProcess}
           >
-            <ReasoningRow text={block.text} running={streaming && i === last} t={t} />
+            <ReasoningRow text={block.text} running={running} t={t} />
           </ProcessReasoning>,
         )
         break
+      }
       case 'image': {
         // Consecutive image blocks share one gallery so several images tile
         // into rows instead of each opening a one-image group of its own.

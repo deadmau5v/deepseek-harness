@@ -51,12 +51,12 @@ export function ReasoningRow({ text, running, t }: { text: string; running: bool
         expandable
         expandOnRowClick
         onToggle={() => { setExpanded(value => !value) }}
-        collapsedContent={(
+        collapsedContent={summary ? (
           <>
             <span className={css.separator} aria-hidden />
             <span ref={summaryRef} className={css.summary} data-follow-end={running || undefined}>{summary}</span>
           </>
-        )}
+        ) : null}
       >
         <div className={css.thinkBody}>{text}</div>
       </DisclosureRow>
