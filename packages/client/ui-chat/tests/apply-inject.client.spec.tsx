@@ -2,6 +2,7 @@
 /** Chat inject factories exercised over independently mounted Conversation and Chat plugins. */
 import { describe, expect, it, vi } from 'vitest'
 import { AttachmentId } from '@deepseek-ai/dsh-attachment'
+import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import type { ISession } from '@deepseek-ai/dsh-api-session-controller/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import {
@@ -133,7 +134,7 @@ describe('Chat inject API', () => {
 
     b.openWorkspacePath.mockResolvedValueOnce({
       ok: false,
-      error: { message: 'xdg-open is not available' },
+      error: new RemoteError('directory-picker/create-failed', 'xdg-open is not available', { path: '/proj/src/b.ts' }),
     })
     await expect(injected.openFile('src/b.ts')).rejects.toThrow('path open failed: xdg-open is not available')
     await b.runtime.dispose()
