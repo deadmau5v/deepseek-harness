@@ -301,27 +301,28 @@ describe('image draft rail', () => {
     expect(within.view.queryByRole('alert')).toBeNull()
   })
 
-  it('announces the format problem before any limit when the batch holds a non-image', () => {
-    const addImages = vi.fn(() => '仅支持 PNG、JPG、WebP、GIF 格式的图片')
-    const result = bench({
-      addImages,
-      imageLimits: {
-        maxImageBytes: 8,
-        maxImagesPerMessage: 1,
-        maxMessageImageBytes: 8,
-        maxImagePixels: 40_000_000,
-        maxImageDimension: 2000,
-        mediaTypes: ['image/png'] as const,
-      },
-    })
-    // Oversized AND over-count AND wrong type: the format rejection wins.
+  it('intakes non-image files by uploading them to temporary folder instead of refusing as image error', async () => {
+    const addImages = vi.fn(() => null)
+    const result = bench({ addImages })
     const files = [
-      new File([new ArrayBuffer(64)], 'a.pdf', { type: 'application/pdf' }),
-      new File([new ArrayBuffer(64)], 'b.pdf', { type: 'application/pdf' }),
+      new File([new ArrayBuffer(64)], 'archive.zip', { type: 'application/zip' }),
     ]
-    act(() => { attachmentOwner(result.slotCalls).onAddImages(files) })
-    expect(addImages).toHaveBeenCalledWith(files)
-    expect(result.view.getByRole('alert').textContent).toContain('仅支持 PNG、JPG、WebP、GIF 格式的图片')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true, path: '/tmp/dsh-uploads/archive.zip', filename: 'archive.zip', size: 64 })),
+    )
+    try {
+      act(() => { attachmentOwner(result.slotCalls).onAddImages(files) })
+      expect(addImages).not.toHaveBeenCalled()
+      expect(result.view.getByRole('alert').textContent).toContain('正在上传文件…')
+      await vi.waitFor(() => {
+        expect(result.view.getByRole('alert').textContent).toContain('文件已上传至 /tmp/dsh-uploads/archive.zip')
+      })
+      await vi.waitFor(() => {
+        expect(result.shell.snapshot.draft).toBe('/tmp/dsh-uploads/archive.zip')
+      })
+    } finally {
+      fetchSpy.mockRestore()
+    }
   })
 
   it('projects display-ready limits into the attachment slot', () => {
@@ -422,7 +423,7 @@ describe('image draft rail', () => {
       const paste = () => {
         fireEvent.paste(textarea, {
           clipboardData: {
-            items: [{ kind: 'file', type: 'text/plain', getAsFile: () => new File(['x'], 'note.txt', { type: 'text/plain' }) }],
+            items: [{ kind: 'file', type: 'image/png', getAsFile: () => new File(['x'], 'note.png', { type: 'image/png' }) }],
             getData: () => '',
           },
         })
@@ -1484,5 +1485,24 @@ describe('command launcher chrome and control seats', () => {
     cleanup()
     const live = bench({ running: true, permissions })
     expect((live.view.getByLabelText(/^访问模式/) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('triggers native file input and intakes selected files when clicking the attach button', async () => {
+    const addImages = vi.fn(() => null)
+    const { view } = bench({ addImages })
+    const attachButton = view.getByLabelText('添加文件或图片')
+    expect(attachButton).toBeTruthy()
+    expect((attachButton as HTMLButtonElement).disabled).toBe(false)
+
+    const fileInput = view.container.querySelector('input[type="file"]') as HTMLInputElement
+    expect(fileInput).toBeTruthy()
+    const clickSpy = vi.spyOn(fileInput, 'click')
+
+    fireEvent.click(attachButton)
+    expect(clickSpy).toHaveBeenCalled()
+
+    const image = new File([Uint8Array.of(1, 2)], 'photo.png', { type: 'image/png' })
+    fireEvent.change(fileInput, { target: { files: [image] } })
+    expect(addImages).toHaveBeenCalledWith([image])
   })
 })

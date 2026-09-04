@@ -14,10 +14,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
+import type { ChangeEvent, CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import clsx from 'clsx'
 import {
-  IconPlusOutline16, IconWarningOutline16, Toast, Tooltip,
+  IconPaperclipOutline16, IconPlusOutline16, IconWarningOutline16, Toast, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 // Type-only: the `plan` projection key merge (the TodoDock posture — the
 // composer reads a host-computed value; the domain owns the key).
@@ -33,6 +33,7 @@ import { ComposerContentEditable } from '../input/editor/ComposerContentEditable
 import { DecoratorPortals } from '../input/editor/DecoratorPortals.tsx'
 import { registerComposerKeymap } from '../input/editor/keymap.ts'
 import { attachmentErrorText, imageSizeText } from '../image-labels.ts'
+import { uploadTempFile } from '../upload.ts'
 import { ContextMeter } from './ContextMeter.tsx'
 import { PermissionSelect } from './PermissionSelect.tsx'
 import css from './InputBar.module.css'
@@ -212,46 +213,75 @@ export function InputBar({
     return () => { el.removeEventListener('wheel', onWheel) }
   }, [])
 
-  // Intake pre-check: an addition that would break
-  // a projected limit is refused as a whole batch, announced immediately, and
-  // never enters the rail — no more submit-time failure rolling the rail
-  // back. The host enforces the same limits at submit for callers that bypass
-  // this composer.
-  const intakeImages = useCallback((files: readonly File[]): void => {
-    if (addImages === undefined || files.length === 0) return
-    const rejected = ((): string | null => {
-      if (imageLimits !== undefined) {
-        // Format precedes limits: a batch with
-        // a non-image must announce the format problem, not a count or size
-        // it could never pass anyway — addImages rejects it authoritatively.
-        if (files.some(file => !(imageLimits.mediaTypes as readonly string[]).includes(file.type))) {
-          return addImages(files)
-        }
-        if (attachments.length + files.length > imageLimits.maxImagesPerMessage) {
-          return t('image.tooMany', { count: imageLimits.maxImagesPerMessage })
-        }
-        if (files.some(file => file.size > imageLimits.maxImageBytes)) {
-          return t('image.fileTooLarge', { size: imageSizeText(imageLimits.maxImageBytes) })
-        }
-        const total = attachments.reduce((sum, attachment) => sum + attachment.file.size, 0)
-          + files.reduce((sum, file) => sum + file.size, 0)
-        if (total > imageLimits.maxMessageImageBytes) {
-          return t('image.totalTooLarge', { size: imageSizeText(imageLimits.maxMessageImageBytes) })
-        }
-      }
-      return addImages(files)
-    })()
-    if (rejected !== null) showToast(rejected)
-  }, [addImages, attachments, imageLimits, showToast, t])
+  const isImageFile = useCallback((file: File): boolean => {
+    const allowed = imageLimits?.mediaTypes ?? ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+    return (allowed as readonly string[]).includes(file.type)
+  }, [imageLimits?.mediaTypes])
 
-  const canAcceptDrop = !locked && !machineBusy && addImages !== undefined
+  // Intake pre-check: separates images (which become draft attachments)
+  // from non-image files (such as archives or documents, which are uploaded to the host's
+  // temporary folder and inserted into the composer draft as paths).
+  const intakeFiles = useCallback((files: readonly File[]): void => {
+    if (files.length === 0) return
+    const imageFiles: File[] = []
+    const otherFiles: File[] = []
+    for (const file of files) {
+      if (isImageFile(file)) {
+        imageFiles.push(file)
+      } else {
+        otherFiles.push(file)
+      }
+    }
+
+    if (imageFiles.length > 0 && addImages !== undefined) {
+      const rejected = ((): string | null => {
+        if (imageLimits !== undefined) {
+          if (attachments.length + imageFiles.length > imageLimits.maxImagesPerMessage) {
+            return t('image.tooMany', { count: imageLimits.maxImagesPerMessage })
+          }
+          if (imageFiles.some(file => file.size > imageLimits.maxImageBytes)) {
+            return t('image.fileTooLarge', { size: imageSizeText(imageLimits.maxImageBytes) })
+          }
+          const total = attachments.reduce((sum, attachment) => sum + attachment.file.size, 0)
+            + imageFiles.reduce((sum, file) => sum + file.size, 0)
+          if (total > imageLimits.maxMessageImageBytes) {
+            return t('image.totalTooLarge', { size: imageSizeText(imageLimits.maxMessageImageBytes) })
+          }
+        }
+        return addImages(imageFiles)
+      })()
+      if (rejected !== null) showToast(rejected)
+    }
+
+    if (otherFiles.length > 0) {
+      showToast(t('file.uploading'))
+      Promise.all(otherFiles.map(file => uploadTempFile(file)))
+        .then((results) => {
+          const formatted = results.map(r => r.path.includes(' ') ? `"${r.path}"` : r.path).join(' ')
+          const prefix = (keyboard?.snapshot.draft !== '' && !keyboard?.snapshot.draft.endsWith(' ')) ? ' ' : ''
+          keyboard?.paste(prefix + formatted)
+          const first = results[0]
+          if (first !== undefined && results.length === 1) {
+            showToast(t('file.uploaded', { path: first.path }))
+          } else {
+            showToast(t('file.uploadedMultiple', { count: results.length }))
+          }
+        })
+        .catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error)
+          showToast(t('file.uploadFailed', { error: message }))
+        })
+    }
+  }, [addImages, attachments, imageLimits, isImageFile, keyboard, showToast, t])
+
+  const canAcceptDrop = !locked && !machineBusy && (addImages !== undefined || keyboard !== undefined)
 
   // The keymap handlers read live bar state through this ref so the editor
   // registration survives re-renders without re-arming per keystroke.
   const gate = useRef({
-    locked, machineBusy, canSteerQueue, running, subagent, resolveSubmitMode, intakeImages,
+    locked, machineBusy, canSteerQueue, running, subagent, resolveSubmitMode, intakeFiles, intakeImages: intakeFiles,
   })
-  gate.current = { locked, machineBusy, canSteerQueue, running, subagent, resolveSubmitMode, intakeImages }
+  gate.current = { locked, machineBusy, canSteerQueue, running, subagent, resolveSubmitMode, intakeFiles, intakeImages: intakeFiles }
 
   useEffect(() => {
     if (editor === null || keyboard === undefined) return
@@ -278,7 +308,7 @@ export function InputBar({
           g.subagent === null,
         ))
       },
-      intakeFiles: (files) => { gate.current.intakeImages(files) },
+      intakeFiles: (files) => { gate.current.intakeFiles(files) },
       pasteText: (text) => {
         if (gate.current.machineBusy || gate.current.locked) return
         keyboard.paste(text)
@@ -294,6 +324,23 @@ export function InputBar({
     e.preventDefault()
     editor?.getRootElement()?.focus({ preventScroll: true })
   }
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const onPickFiles = useCallback((): void => {
+    if (fileInputRef.current !== null) {
+      fileInputRef.current.value = ''
+      fileInputRef.current.click()
+    }
+  }, [])
+
+  const onFileInputChange = useCallback((e: ChangeEvent<HTMLInputElement>): void => {
+    const files = e.target.files
+    if (files !== null && files.length > 0) {
+      intakeFiles([...files])
+    }
+    e.target.value = ''
+  }, [intakeFiles])
 
   const onToggleCommandMenu = (): void => {
     if (keyboard !== undefined) toggleCommandMenu?.(keyboard.caretSpan())
@@ -396,7 +443,7 @@ export function InputBar({
         {renderSlot('conversation.input.attachments', {
           attachments,
           canAcceptDrop,
-          onAddImages: intakeImages,
+          onAddImages: intakeFiles,
           onRemoveImage: (id) => { removeImage?.(id) },
           dropLimits: imageLimits === undefined ? undefined : {
             count: imageLimits.maxImagesPerMessage,
@@ -450,6 +497,27 @@ export function InputBar({
                 <IconPlusOutline16 size={14} />
               </button>
             </Tooltip>
+            <Tooltip label={t('input.attach')} side="top" delayMs={500}>
+              <button
+                type="button"
+                className={css.add}
+                aria-label={t('input.attach')}
+                disabled={locked || machineBusy || keyboard === undefined}
+                onMouseDown={keepFocus}
+                onClick={onPickFiles}
+              >
+                <IconPaperclipOutline16 size={14} />
+              </button>
+            </Tooltip>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              style={{ display: 'none' }}
+              onChange={onFileInputChange}
+              tabIndex={-1}
+              aria-hidden="true"
+            />
             <div className={css.modes}>
               {accessSelect}
               {sessionId === undefined ? null : renderSlot('conversation.input.plan', { locked })}

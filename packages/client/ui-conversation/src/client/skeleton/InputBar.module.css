@@ -354,3 +354,9 @@
   font-size: 12px;
   cursor: pointer;
 }
+
+@media (max-width: 768px) {
+  .select {
+    max-width: 120px;
+  }
+}

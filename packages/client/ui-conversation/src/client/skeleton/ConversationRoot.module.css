@@ -450,3 +450,15 @@
 .root[data-phase='settling'] .composerSeat {
   visibility: hidden;
 }
+
+@media (max-width: 768px) {
+  .root {
+    --dsh-chat-content-width: 100%;
+    --dsh-composer-card-max-width: 100%;
+    --dsh-composer-side-clearance: 8px;
+  }
+
+  .header {
+    padding: 10px 12px 0 50px;
+  }
+}

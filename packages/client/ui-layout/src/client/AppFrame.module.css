@@ -117,3 +117,52 @@
 .overlayLayer > * {
   pointer-events: auto;
 }
+
+/* Mobile drawer overlay posture: on narrow screens, the sidebar becomes a floating drawer */
+.mobileDrawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(320px, 85vw);
+  max-width: 85vw;
+  z-index: 100;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.45);
+  transition: transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+  transform: translateX(0);
+}
+
+.mobileDrawerClosed {
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+
+.mobileBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 90;
+  transition: opacity var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+}
+
+.mobileToggle {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 15;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-elevated, var(--dsw-specific-selector));
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+
+.mobileToggle:hover {
+  background: var(--dsw-alias-interactive-bg-hover-solid);
+}

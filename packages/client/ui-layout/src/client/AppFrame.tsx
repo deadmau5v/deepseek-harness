@@ -15,10 +15,30 @@ import type { ReactNode } from 'react'
 import type {
   PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
 } from '@deepseek-ai/dsh-client-ui-slots'
-import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
+import {
+  computeColumns, MOBILE_BREAKPOINT, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT,
+} from './columns.ts'
 import { DocumentTitle } from './DocumentTitle.tsx'
 import type { createLayoutStore } from './stores.ts'
 import css from './AppFrame.module.css'
+
+function classNames(...classes: (string | boolean | undefined | null)[]): string {
+  return classes.filter(Boolean).join(' ')
+}
+
+/** Panel toggle glyph for mobile header. */
+function PanelIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M2.5 2C1.67157 2 1 2.67157 1 3.5V12.5C1 13.3284 1.67157 14 2.5 14H13.5C14.3284 14 15 13.3284 15 12.5V3.5C15 2.67157 14.3284 2 13.5 2H2.5ZM2.5 3.4H5.5V12.6H2.5C2.00294 12.6 1.6 12.1971 1.6 11.7V4.3C1.6 3.80294 2.00294 3.4 2.5 3.4ZM6.9 12.6H13.5C13.9971 12.6 14.4 12.1971 14.4 11.7V4.3C14.4 3.80294 13.9971 3.4 13.5 3.4H6.9V12.6Z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
 
 /** Full composed props: runtime share + child-slot render share + store share. */
 export type AppFrameProps =
@@ -139,10 +159,9 @@ export function AppFrame({
 
   // Narrow viewports auto-collapse the sidebar; the store mirror keeps
   // toggleSidebar's semantics right (narrow toggles flip the manual
-  // re-expand override, stores.ts). Collapsed is decided here, so the
-  // solver stays breakpoint-free: a narrow re-expand passes the preference
-  // (or the default when the wide preference is closed) and the center
-  // absorbs the squeeze.
+  // re-expand override, stores.ts). Below MOBILE_BREAKPOINT, the sidebar
+  // transforms into a floating overlay drawer so the center column retains 100% width.
+  const isMobile = viewport < MOBILE_BREAKPOINT
   const narrow = viewport < SIDEBAR_AUTO_COLLAPSE
   useEffect(() => { actions.setNarrow(narrow) }, [actions, narrow])
   const sidebarCollapsed = narrow ? !panels.narrowExpanded : panels.sidebar === 0
@@ -152,6 +171,22 @@ export function AppFrame({
   const cols = computeColumns(viewport, sidebarPreference, detailsSession === undefined ? 0 : panels.details)
   const colsRef = useRef(cols)
   colsRef.current = cols
+
+  const effectiveSidebarWidth = isMobile
+    ? Math.min(320, Math.round(viewport * 0.85))
+    : cols.sidebar
+
+  const gridSidebar = isMobile ? 0 : cols.sidebar
+  const gridDetails = isMobile ? 0 : cols.details
+
+  // Auto-close mobile drawer when switching sessions
+  const prevSession = useRef(detailsSession)
+  useEffect(() => {
+    if (isMobile && !sidebarCollapsed && detailsSession !== prevSession.current) {
+      actions.toggleSidebar()
+    }
+    prevSession.current = detailsSession
+  }, [actions, detailsSession, isMobile, sidebarCollapsed])
 
   // The drag base is the rendered width captured at drag start (grabbing a
   // concession-clamped panel must not jump back to the stored preference);
@@ -176,7 +211,7 @@ export function AppFrame({
     <div
       ref={frameRef}
       className={css.frame}
-      style={{ gridTemplateColumns: `${cols.sidebar}px minmax(0, 1fr) ${cols.details}px` }}
+      style={{ gridTemplateColumns: `${gridSidebar}px minmax(0, 1fr) ${gridDetails}px` }}
       data-sidebar-collapsed={sidebarCollapsed || undefined}
       data-details-collapsed={cols.details === 0 || undefined}
       data-dragging={dragging || undefined}
@@ -185,15 +220,29 @@ export function AppFrame({
         productTitle={productTitle}
         {...documentTitle === undefined ? {} : { title: documentTitle }}
       />
-      <div className={css.sidebarCol}>
+      {isMobile && !sidebarCollapsed && (
+        <div
+          className={css.mobileBackdrop}
+          onClick={() => { actions.toggleSidebar() }}
+          aria-hidden="true"
+        />
+      )}
+      <div
+        className={classNames(
+          css.sidebarCol,
+          isMobile && css.mobileDrawer,
+          isMobile && sidebarCollapsed && css.mobileDrawerClosed,
+        )}
+        style={isMobile ? { width: effectiveSidebarWidth } : undefined}
+      >
         {/* Render-site slot call with live concession output: a closed
             sidebar keeps the mounted slot at the compact-rail width, and the
             component sees its rendered state as owner params decided here
             (collapsed follows the resolved rail, so a derived auto-collapse
             renders the rail UI too). */}
         {renderSlot('sidebar', {
-          collapsed: sidebarCollapsed,
-          width: cols.sidebar,
+          collapsed: isMobile ? false : sidebarCollapsed,
+          width: effectiveSidebarWidth,
         })}
       </div>
       <>
@@ -202,7 +251,19 @@ export function AppFrame({
             the shell's own pending rendering. The conversation
             is session-maybe; SessionProvider withholds the strict details
             entry while no session is current. */}
-        <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>
+        <CenterColumn>
+          {isMobile && sidebarCollapsed && (
+            <button
+              type="button"
+              className={css.mobileToggle}
+              aria-label={t('expand')}
+              onClick={() => { actions.toggleSidebar() }}
+            >
+              <PanelIcon size={18} />
+            </button>
+          )}
+          {renderSlot('conversation', {})}
+        </CenterColumn>
         <DetailsColumn>
           <SessionProvider>{renderSlot('details', {})}</SessionProvider>
         </DetailsColumn>
@@ -210,9 +271,9 @@ export function AppFrame({
       <div className={css.overlayLayer} data-shell-overlay>
         {renderSlot('shell.overlay', {})}
       </div>
-      {/* The collapsed rail is fixed-width: no resize handle while closed. */}
-      {!sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
-      {cols.details > 0 && <DragHandle side="details" left={viewport - cols.details} onStart={onDetailsStart} onDrag={onDetailsDrag} onEnd={onDragEnd} />}
+      {/* The collapsed rail is fixed-width: no resize handle while closed. Mobile has no handles. */}
+      {!isMobile && !sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
+      {!isMobile && cols.details > 0 && <DragHandle side="details" left={viewport - cols.details} onStart={onDetailsStart} onDrag={onDetailsDrag} onEnd={onDragEnd} />}
     </div>
   )
 }

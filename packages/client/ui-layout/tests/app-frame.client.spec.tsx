@@ -434,3 +434,29 @@ describe('AppFrame — unmount with an in-flight resize frame', () => {
     expect(tracks(frame)).toEqual([280, 330])
   })
 })
+
+describe('AppFrame — mobile viewport drawer posture', () => {
+  it('renders sidebar as overlay drawer and provides mobile toggle on phone viewports', () => {
+    frameWidth = 390
+    const { frame } = mountFrame()
+    // In mobile mode, sidebar column occupies 0px in the grid template
+    expect(tracks(frame)).toEqual([0, 0])
+    expect(frame.querySelectorAll('[class*="handle"]')).toHaveLength(0)
+
+    // A mobile toggle button is present while collapsed
+    const toggleBtn = frame.querySelector('button[class*="mobileToggle"]') as HTMLButtonElement
+    expect(toggleBtn).toBeTruthy()
+    expect(frame.querySelector('[class*="mobileBackdrop"]')).toBeNull()
+
+    // Clicking the toggle opens the drawer overlay and shows the backdrop
+    act(() => { toggleBtn.click() })
+    expect(frame.querySelector('button[class*="mobileToggle"]')).toBeNull()
+    const backdrop = frame.querySelector('[class*="mobileBackdrop"]') as HTMLDivElement
+    expect(backdrop).toBeTruthy()
+
+    // Clicking the backdrop closes the drawer
+    act(() => { backdrop.click() })
+    expect(frame.querySelector('[class*="mobileBackdrop"]')).toBeNull()
+    expect(frame.querySelector('button[class*="mobileToggle"]')).toBeTruthy()
+  })
+})
