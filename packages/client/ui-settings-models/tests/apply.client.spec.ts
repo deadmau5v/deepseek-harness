@@ -195,23 +195,8 @@ describe('ui-settings-models apply', () => {
     expect(() => b.locale.register('settings.models', 'en', {})).not.toThrow()
   })
 
-  it('derives remote-browser acknowledgement from the settings scope', async () => {
-    const describeCall = vi.fn().mockResolvedValue({
-      ok: true,
-      value: {
-        writable: true,
-        hasDocument: false,
-        namespaces: [{
-          ns: WELCOME_NOTICE_SETTINGS_NAMESPACE,
-          schema: {},
-          value: {},
-          applies: 'live' as const,
-          secrets: [],
-          revision: 0,
-        }],
-      },
-    })
-    const b = await bench(false, { describe: describeCall })
+  it('keeps remote-browser acknowledgement in process memory', async () => {
+    const b = await bench(false)
     declare(b.slots)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     const entry = b.slots.entries('settings.onboarding')
@@ -221,10 +206,8 @@ describe('ui-settings-models apply', () => {
     )()
 
     await injected.controller.load()
-    await vi.waitFor(() => {
-      expect(injected.controller.store.getSnapshot()).toEqual({
-        status: 'ready', acknowledged: false, error: null,
-      })
+    expect(injected.controller.store.getSnapshot()).toEqual({
+      status: 'ready', acknowledged: false, error: null,
     })
   })
 })
