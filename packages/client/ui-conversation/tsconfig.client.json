@@ -104,6 +104,7 @@
     }
   ],
   "exclude": [
-    "src/index.ts"
+    "src/index.ts",
+    "src/upload-route.ts"
   ]
 }
