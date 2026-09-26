@@ -22,5 +22,5 @@ it('uses changed budgets for later commands without remounting the executor', as
   await live.update({ graceMs: 200 })
   expect(ctx.shell.resolve({ command: 'echo ok' }).timeoutMs).toBe(5_000)
   await live.replace({})
-  expect(ctx.shell.resolve({ command: 'echo ok' }).timeoutMs).toBe(120_000)
+  expect(ctx.shell.resolve({ command: 'echo ok' }).timeoutMs).toBe(1_200_000)
 })
